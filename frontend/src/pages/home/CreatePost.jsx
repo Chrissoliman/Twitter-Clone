@@ -2,23 +2,56 @@ import { CiImageOn } from "react-icons/ci";
 import { BsEmojiSmileFill } from "react-icons/bs";
 import { useRef, useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
+import axios from "axios";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 const CreatePost = () => {
+  const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+  const queryClient = useQueryClient();
+
   const [text, setText] = useState("");
   const [img, setImg] = useState(null);
 
   const imgRef = useRef(null);
 
-  const isPending = false;
-  const isError = false;
+  const {
+    mutate: createPost,
+    isPending,
+    isError,
+    error
+  } = useMutation({
+    mutationFn: async ({ text, img }) => {
+      try {
+        const res = await axios.post("/api/posts/create", { text, img });
 
-  const data = {
-    profileImg: "/avatars/boy1.png",
-  };
+        return res.data;
+      } catch (error) {
+        toast.error(error.response.data.error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          throw new Error(error.response.data.error || "Failed to create post");
+        } else if (error.request) {
+          // The request was made but no response was received
+          throw new Error("No response received from server");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          throw new Error("Error setting up the request");
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success("Post created succefully");
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      setText("");
+      setImg(null);
+    },
+  });
 
   function handleSubmit(e) {
     e.preventDefault();
-		alert("Post created successfully");
+    createPost({ text, img });
   }
 
   function handleImgChange(e) {
@@ -29,18 +62,18 @@ const CreatePost = () => {
       reader.onload = () => {
         setImg(reader.result);
       };
-      console.log('reader: ', reader)
-      
-      console.log('file: ', file)
+      console.log("reader: ", reader);
+
+      console.log("file: ", file);
       reader.readAsDataURL(file);
-      console.log('reader result: ', reader.result)
+      console.log("reader result: ", reader.result);
     }
   }
   return (
     <div className="flex p-4 items-start gap-4 border-b border-gray-700">
       <div className="avatar">
         <div className="w-8 rounded-full">
-          <img src={data.profileImg || "/avatar-placeholder.png"} />
+          <img src={authUser.profileImg || "/avatar-placeholder.png"} />
         </div>
       </div>
       <form className="flex flex-col gap-2 w-full" onSubmit={handleSubmit}>
@@ -75,7 +108,13 @@ const CreatePost = () => {
             />
             <BsEmojiSmileFill className="fill-primary w-5 h-5 cursor-pointer" />
           </div>
-          <input type="file" hidden accept="image/*" ref={imgRef} onChange={handleImgChange} />
+          <input
+            type="file"
+            hidden
+            accept="image/*"
+            ref={imgRef}
+            onChange={handleImgChange}
+          />
 
           <button className="btn btn-primary rounded-full btn-sm text-white px-4">
             {isPending ? "Posting..." : "Post"}
@@ -84,7 +123,7 @@ const CreatePost = () => {
 
         {isError && (
           <div className="text-red-500 mt-2">
-            An error occurred while posting.
+            {error.message}
           </div>
         )}
       </form>
