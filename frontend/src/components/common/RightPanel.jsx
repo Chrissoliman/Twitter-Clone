@@ -3,6 +3,8 @@ import RightPanelSkeleton from "../skeletons/RightPanelSkeleton";
 import { USERS_FOR_RIGHT_PANEL } from "../../utils/db/dummy";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import useFollow from "../../hooks/useFollow";
+import LoadingSpinner from './LoadingSpinner'
 
 const RightPanel = () => {
   const {
@@ -36,14 +38,22 @@ const RightPanel = () => {
     },
   });
 
+  const {follow, isPending} = useFollow()
+
+  function handleFollow(e, userId) {
+    e.preventDefault()
+    follow(userId)
+  }
+
+
   if (suggestedUsers?.length === 0) {
 	return <div className="md:w-64 w-0"></div>
   }
 
   return (
     <div className="hidden lg:block my-4 mx-2">
-      <div className="bg-[#16181C] p-4 rounded-md sticky top-2">
-        <p className="font-bold">Who to follow</p>
+      <div className="bg-[#000000] border border-stone-700 p-4 rounded-md sticky top-2">
+        <p className="font-bold text-lg mb-2">Who to follow</p>
         <div className="flex flex-col gap-4">
           {/* item */}
           {isLoading && (
@@ -79,9 +89,9 @@ const RightPanel = () => {
                 <div>
                   <button
                     className="btn bg-white text-black hover:bg-white hover:opacity-90 rounded-full btn-sm"
-                    onClick={(e) => e.preventDefault()}
+                    onClick={(e) => handleFollow(e, user._id)}
                   >
-                    Follow
+                    {isPending ? <LoadingSpinner size='sm' /> : "Follow"}
                   </button>
                 </div>
               </Link>
