@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { formatPostDate } from "../../utils/date";
 
 const Post = ({ post }) => {
   const { data: authUser } = useQuery({ queryKey: ["authUser"] });
@@ -43,11 +44,7 @@ const Post = ({ post }) => {
     },
   });
 
-  const {
-    mutate: likePost,
-    isPending: isLiking,
-    error,
-  } = useMutation({
+  const { mutate: likePost, isPending: isLiking } = useMutation({
     mutationFn: async () => {
       try {
         const res = await axios.post(`/api/posts/like/${post._id}`);
@@ -83,15 +80,50 @@ const Post = ({ post }) => {
     },
   });
 
+  const { mutate: commentPost, isPending: isCommenting } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axios.post(`/api/posts/comment/${post._id}`, {text: comment});
+
+        return res.data;
+      } catch (error) {
+        toast.error(error.response.data.error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          throw new Error(
+            error.response.data.error || "Failed to create account"
+          );
+        } else if (error.request) {
+          // The request was made but no response was received
+          throw new Error("No response received from server");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          throw new Error("Error setting up the request");
+        }
+      }
+    },
+    onSuccess: ({ post }) => {
+      setComment('')
+      queryClient.setQueryData(["posts"], (oldData) => {
+        return oldData.map((p) => {
+          if (p._id === post._id) {
+            return post; // This now includes all updated data, including populated users
+          }
+          return p;
+        });
+      });
+    },
+  });
+
   const [comment, setComment] = useState("");
   const postOwner = post.user;
   const isLiked = post.likes.includes(authUser._id);
 
   const isMyPost = postOwner._id === authUser._id;
 
-  const formattedDate = "1h";
+  const formattedDate = formatPostDate(post.createdAt)
 
-  const isCommenting = false;
 
   const handleDeletePost = () => {
     deletePost();
@@ -99,6 +131,8 @@ const Post = ({ post }) => {
 
   const handlePostComment = (e) => {
     e.preventDefault();
+    if (isCommenting) return;
+    commentPost();
   };
 
   const handleLikePost = () => {
