@@ -1,35 +1,73 @@
 import { Link } from "react-router-dom";
+import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query'
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 import { IoSettingsOutline } from "react-icons/io5";
 import { RiUserFollowLine } from "react-icons/ri";
 import { FaRegHeart } from "react-icons/fa";
+import axios from "axios";
+import {toast} from 'react-hot-toast'
 
 const NotificationPage = () => {
-  const isLoading = false;
-  const notifications = [
-    {
-      _id: "1",
-      from: {
-        _id: "1",
-        username: "johndoe",
-        profileImg: "/avatars/boy2.png",
-      },
-      type: "follow",
-    },
-    {
-      _id: "2",
-      from: {
-        _id: "2",
-        username: "janedoe",
-        profileImg: "/avatars/girl1.png",
-      },
-      type: "like",
-    },
-  ];
+  const queryClient = useQueryClient()
 
-  const deleteNotifications = () => {
-    alert("All notifications deleted");
+  const {data: notifications, isLoading, isError} = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      try {
+        const res = await axios.get('/api/notifications')
+
+        return res.data
+      } catch (error) {
+        toast.error(error.response.data.error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          throw new Error(error.response.data.error || "Failed to create post");
+        } else if (error.request) {
+          // The request was made but no response was received
+          throw new Error("No response received from server");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          throw new Error("Error setting up the request");
+        }
+      }
+    }
+  })
+
+  const {mutate: deleteNotifications} = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axios.delete('/api/notifications/')
+
+        return res.data
+      } catch (error) {
+        toast.error(error.response.data.error);
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          throw new Error(error.response.data.error || "Failed to create post");
+        } else if (error.request) {
+          // The request was made but no response was received
+          throw new Error("No response received from server");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          throw new Error("Error setting up the request");
+        }
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['notifications']})
+      toast.success('Notifications deleted succesfully')
+    },
+  })
+
+  const deleteNotificationsHandler = (e) => {
+    e.preventDefault()
+    deleteNotifications()
   };
 
   return (
@@ -46,7 +84,7 @@ const NotificationPage = () => {
               className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
             >
               <li>
-                <a onClick={deleteNotifications}>Delete all notifications</a>
+                <a onClick={deleteNotificationsHandler}>Delete all notifications</a>
               </li>
             </ul>
           </div>
